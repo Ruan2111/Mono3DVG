@@ -2,7 +2,7 @@ random_seed: 444
 
 dataset:
   type: &dataset_type 'Mono3DRefer'
-  root_dir: '/Mono3DRefer/'
+  root_dir: './Mono3DRefer/'
   train_split: 'train'
   val_split: 'val'
   test_split: 'test'
@@ -93,11 +93,11 @@ lr_scheduler:
 
 trainer:
   max_epoch: 60
-  gpu_ids: '1'
+  gpu_ids: '0'
   detr_model: 'checkpoint_best_MonoDETR.pth'
   save_frequency: 1    # checkpoint save interval (in epoch)
   resume_model: False
-  pretrain_model: None
+  #pretrain_model: None
   save_path: 'outputs/'
 
 tester:

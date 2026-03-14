@@ -43,6 +43,7 @@ class Trainer(object):
 
         # loading pretrain/resume model
         if cfg.get('pretrain_model'):
+            print(cfg['pretrain_model'])
             assert os.path.exists(cfg['pretrain_model'])
             load_checkpoint(model=self.model,
                             optimizer=None,

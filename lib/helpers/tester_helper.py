@@ -41,7 +41,7 @@ class Tester(object):
         torch.set_grad_enabled(False)
         self.model.eval()
 
-        with open("/Mono3DRefer/test_instanceID_split.json", "r") as file:
+        with open("Mono3DRefer/test_instanceID_split.json", "r") as file:
             test_instanceID_spilt = json.load(file)
         results = {}
         iou_3dbox_test = {"Unique": [], "Multiple": [], "Overall": [], "Near": [], "Medium": [], "Far": [],
