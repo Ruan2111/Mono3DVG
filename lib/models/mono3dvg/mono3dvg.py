@@ -20,6 +20,7 @@ from .matcher import build_matcher
 from .mono3dvg_transformer import build_mono3dvg_trans
 from .depth_predictor import DepthPredictor
 from .depth_predictor.ddn_loss import DDNLoss
+from .text_mamba import TextMambaEncoder
 from lib.losses.focal_loss import sigmoid_focal_loss
 
 from transformers import RobertaModel, RobertaTokenizerFast
@@ -36,6 +37,11 @@ class Mono3DVG(nn.Module):
                  aux_loss=True, with_box_refine=False, init_box=False,
                  text_encoder_type="roberta-base",
                  freeze_text_encoder=False,
+                 use_text_mamba=False,
+                 text_mamba_layers=1,
+                 text_mamba_expand=2,
+                 text_mamba_kernel_size=3,
+                 text_mamba_dropout=0.1,
                  ):
         """ Initializes the model.
         Parameters:
@@ -138,6 +144,15 @@ class Mono3DVG(nn.Module):
             output_feat_size=hidden_dim,
             dropout=self.expander_dropout,
         )
+        self.text_mamba = None
+        if use_text_mamba:
+            self.text_mamba = TextMambaEncoder(
+                d_model=hidden_dim,
+                num_layers=text_mamba_layers,
+                expand_ratio=text_mamba_expand,
+                kernel_size=text_mamba_kernel_size,
+                dropout=text_mamba_dropout,
+            )
 
     def forward(self, images, calibs,  img_sizes, text, im_name, instanceID, ann_id):
         """ The forward expects a NestedTensor, which consists of:
@@ -185,8 +200,11 @@ class Mono3DVG(nn.Module):
             # The text is already encoded, use as is.
             text_attention_mask, text_memory_resized, tokenized = text
 
-        # permute LenxBxDim to BxLenxDim
-        text_memory_resized = text_memory_resized.permute(1, 0, 2)
+        if text_memory_resized.shape[0] != text_attention_mask.shape[0]:
+            text_memory_resized = text_memory_resized.permute(1, 0, 2)
+
+        if self.text_mamba is not None:
+            text_memory_resized = self.text_mamba(text_memory_resized, text_attention_mask)
 
         pred_depth_map_logits, depth_pos_embed, weighted_depth = self.depth_predictor(srcs, masks[1],
                                             pos[1],text_memory_resized, text_attention_mask, im_name, instanceID, ann_id)
@@ -582,6 +600,11 @@ def build(cfg):
         with_box_refine=cfg['with_box_refine'],
         init_box=cfg['init_box'],
         freeze_text_encoder=cfg['freeze_text_encoder'],
+        use_text_mamba=cfg.get('use_text_mamba', False),
+        text_mamba_layers=cfg.get('text_mamba_layers', 1),
+        text_mamba_expand=cfg.get('text_mamba_expand', 2),
+        text_mamba_kernel_size=cfg.get('text_mamba_kernel_size', 3),
+        text_mamba_dropout=cfg.get('text_mamba_dropout', cfg['dropout']),
     )
 
     # matcher
